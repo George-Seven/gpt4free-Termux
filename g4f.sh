@@ -95,10 +95,23 @@ pip install -U udocker
 
 fix_udocker_hardlinks
 
+LATEST_TAG="$(udocker search --list-tags hlohaus789/g4f | tail -n 2 | head -n 1)"
+
+if [ -z "${LATEST_TAG}" ]; then
+    echo "Bad connection, exiting..."
+    exit 1
+fi
+
+G4F_IMAGE="hlohaus789/g4f:${LATEST_TAG}"
+
 IMAGE_DEPS=" \
 bitnami/minideb:bookworm \
-hlohaus789/g4f:latest \
+${G4F_IMAGE} \
 "
+
+for i in $(udocker images | cut -d\  -f1 | grep "hlohaus789/g4f" | grep -v -F "${G4F_IMAGE}"); do
+    udocker rmi -f "${i}" 2>/dev/null >/dev/null || true
+done
 
 for i in ${IMAGE_DEPS}; do
     echo
@@ -378,7 +391,7 @@ fi
 echo
 echo " Creating container g4f..."
 echo
-udocker create --name=g4f hlohaus789/g4f:latest
+udocker create --name=g4f "${G4F_IMAGE}"
 
 TMP_DIR="$(mktemp -up /tmp)"
 
@@ -397,10 +410,10 @@ udocker run -v "${HOME}/.udocker/extras:${TMP_DIR}" --user=root g4f bash -c ' \
 
 rm -rf "${TMP_DIR}"
 
-echo
-echo " Removing image hlohaus789/g4f:latest as dependency has been built..."
-echo
-#udocker rmi -f hlohaus789/g4f:latest 2>/dev/null >/dev/null
+#echo
+#echo " Removing image "${G4F_IMAGE}" as dependency has been built..."
+#echo
+#udocker rmi -f "${G4F_IMAGE}" 2>/dev/null >/dev/null
 
 clear 2>/dev/null || true
 
