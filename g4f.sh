@@ -85,6 +85,27 @@ rm -rf "${TMP_PATCH_FILE}"
 return 0
 }
 
+fix_udocker_qemu(){
+# Fix qemu not found errors that occurs when running non-native platform containers
+# Not needed for g4f container, but helpful for your other platform containers if any
+UDOCKER_PATCH='
+--- udocker/engine/base.py
++++ udocker.mod/engine/base.py
+@@ -690,4 +690,4 @@
+         if not qemu_path:
+             Msg().err("Warning: qemu required but not available", l=Msg.WAR)
+             return ""
+-        return qemu_path if return_path else qemu_filename
++        return qemu_path if return_path else qemu_path
+'
+
+TMP_PATCH_FILE="$(mktemp)"
+patch -p0 --no-backup-if-mismatch -r "${TMP_PATCH_FILE}" -d "$(python -c "import sysconfig; print(sysconfig.get_path('platlib'))" 2>/dev/null || echo "${PREFIX}/lib/python3.11/site-packages")" 2>/dev/null >/dev/null <<< "${UDOCKER_PATCH}" || true
+rm -rf "${TMP_PATCH_FILE}"
+
+return 0
+}
+
 install_g4f(){
 clear 2>/dev/null || true
 
@@ -94,6 +115,8 @@ yes | pkg install curl python-pip proot
 pip install -U udocker
 
 fix_udocker_hardlinks
+
+fix_udocker_qemu
 
 LATEST_TAG="$(udocker search --list-tags hlohaus789/g4f | tail -n 2 | head -n 1)"
 
@@ -435,6 +458,8 @@ EOF
 echo "2.9.9" > "${HOME}/.udocker/lib/VERSION"
 
 fix_udocker_hardlinks
+
+fix_udocker_qemu
 
 if [ $# -lt 1 ]; then
     usage_text
