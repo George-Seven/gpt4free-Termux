@@ -132,10 +132,6 @@ bitnami/minideb:bookworm \
 ${G4F_IMAGE} \
 "
 
-for i in $(udocker images | cut -d\  -f1 | grep "hlohaus789/g4f" | grep -v -F "${G4F_IMAGE}"); do
-    udocker rmi -f "${i}" 2>/dev/null >/dev/null || true
-done
-
 for i in ${IMAGE_DEPS}; do
     echo
     echo " Checking dependency image ${i} ..."
@@ -145,7 +141,7 @@ for i in ${IMAGE_DEPS}; do
         echo
         echo " Downloading image ${i} ..."
         echo
-        while [ ${retry} -lt 15 ]; do
+        while [ ${retry} -lt 25 ]; do
             if UDOCKER_LOGLEVEL=3 udocker pull "${i}"; then
                 break
             fi
@@ -153,7 +149,7 @@ for i in ${IMAGE_DEPS}; do
             echo " Network error, retrying..."
             echo
             retry="$(("${retry}"+1))"
-            if [ ${retry} -eq 10 ]; then
+            if [ ${retry} -eq 20 ]; then
                 echo
                 echo " Bad Connection, exiting..."
                 echo
@@ -162,6 +158,10 @@ for i in ${IMAGE_DEPS}; do
             sleep 5
         done
     fi
+done
+
+for i in $(udocker images | cut -d\  -f1 | grep "hlohaus789/g4f" | grep -v -F "${G4F_IMAGE}"); do
+    udocker rmi -f "${i}" 2>/dev/null >/dev/null || true
 done
 
 for i in debian-python-builder g4f; do
