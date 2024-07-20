@@ -485,7 +485,7 @@ udocker run -v "${HOME}/.udocker/extras:${TMP_DIR}" --user=root g4f bash -c ' \
     export PYTHON_VERSION='${PYTHON_VERSION}' PYTHON_MAJOR='${PYTHON_MAJOR}'; \
     echo "127.0.0.1 localhost" >>/etc/hosts; \
     tar -xf "'${TMP_DIR}'/python-${PYTHON_VERSION}.tar.gz" -C / --preserve-permissions || exit 1; \
-    pip3 install -U --break-system-packages --root-user-action=ignore g4f supervisor; \
+    pip3 install -U --break-system-packages --root-user-action=ignore g4f curl-cffi flask; \
     mkdir -p /app; \
     cd app; \
     echo -n "#!" > chatgpt.py; echo -e '\''/usr/bin/env python3\n\nimport sys\nfrom g4f.client import Client\n\nclient = Client()\nresponse = client.chat.completions.create(\n model="gpt-4",\n    messages=[{"role": "user", "content": " ".join(sys.argv[1:])}],\n)\nprint(response.choices[0].message.content)'\'' >> chatgpt.py; chmod 755 chatgpt.py; \
