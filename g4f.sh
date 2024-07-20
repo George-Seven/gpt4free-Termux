@@ -61,6 +61,35 @@ Or
 return 0
 }
 
+install_udocker(){
+
+apt update
+
+yes | pkg install -y python-pip patch proot
+
+if pip freeze | grep -Eq "^udocker=="; then
+  pip uninstall -y udocker
+fi
+
+pip install -U udocker
+
+}
+
+fix_udocker(){
+
+fix_udocker_conf(){
+mkdir -p "${HOME}/.udocker/lib"
+
+cat <<'EOF' > "${HOME}/.udocker/udocker.conf"
+[DEFAULT]
+use_proot_executable = /data/data/com.termux/files/usr/bin/proot
+proot_link2symlink = True
+verbose_level = 1
+EOF
+
+echo "2.9.9" > "${HOME}/.udocker/lib/VERSION"
+}
+
 fix_udocker_hardlinks(){
 # Fix errors when extracting hardlinks from Docker images
 # https://github.com/indigo-dc/udocker/issues/388#issuecomment-1527277800
@@ -106,17 +135,48 @@ rm -rf "${TMP_PATCH_FILE}"
 return 0
 }
 
-install_g4f(){
-clear 2>/dev/null || true
+fix_udocker_proot(){
+# Fix shm errors
+# https://github.com/termux/proot-distro/issues/19
+# Fix hardcoded bad port errors
+#https://github.com/termux/proot-distro/issues/22
+UDOCKER_PATCH='
+--- udocker/engine/proot.py
++++ udocker.mod/engine/proot.py
+@@ -166,7 +166,7 @@
+ 
+         if (Config.conf['proot_link2symlink'] and
+                 self._has_option("--link2symlink")):
+-            proot_link2symlink = ["--link2symlink", ]
++            proot_link2symlink = ["--link2symlink", "--sysvipc", "-L", "-p", ]
+         else:
+             proot_link2symlink = []
+'
 
-apt update
-#yes | pkg upgrade
-yes | pkg install curl python-pip proot
-pip install -U udocker
+TMP_PATCH_FILE="$(mktemp)"
+patch -p0 --no-backup-if-mismatch -r "${TMP_PATCH_FILE}" -d "$(python -c "import sysconfig; print(sysconfig.get_path('platlib'))" 2>/dev/null || echo "${PREFIX}/lib/python3.11/site-packages")" 2>/dev/null >/dev/null <<< "${UDOCKER_PATCH}" || true
+rm -rf "${TMP_PATCH_FILE}"
+
+return 0
+}
+
+fix_udocker_conf
 
 fix_udocker_hardlinks
 
 fix_udocker_qemu
+
+fix_udocker_proot
+
+return 0
+}
+
+install_g4f(){
+clear 2>/dev/null || true
+
+install_udocker
+
+fix_udocker
 
 LATEST_TAG="$(udocker search --list-tags hlohaus789/g4f | tail -n 2 | head -n 1)"
 
@@ -446,20 +506,7 @@ example_text
 return 0
 }
 
-mkdir -p "${HOME}/.udocker/lib"
-
-cat <<'EOF' > "${HOME}/.udocker/udocker.conf"
-[DEFAULT]
-use_proot_executable = /data/data/com.termux/files/usr/bin/proot
-proot_link2symlink = True
-verbose_level = 1
-EOF
-
-echo "2.9.9" > "${HOME}/.udocker/lib/VERSION"
-
-fix_udocker_hardlinks
-
-fix_udocker_qemu
+fix_udocker
 
 if [ $# -lt 1 ]; then
     usage_text
